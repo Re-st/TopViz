@@ -6,7 +6,7 @@
 [ -z "$USER" ] && USER="gun"
 [ -z "$BASE" ] && BASE="$HOME/Topuzz-experiment"
 
-HEATMAPS="$BASE/output/replay-json"
+HEATMAPS="$BASE/output/replay-dug-json"
 SP_OUT="$BASE/safe/sparrow-outs"
 DEST="/var/www/html/$USER/dug"
 
@@ -51,23 +51,35 @@ if [ "$#" -ne 0 ]; then
 fi
 
 mkdir -p $SP_OUT
-rsync -az gun@elvis08.kaist.ac.kr:$SP_OUT/ $SP_OUT
+# rsync -az gun@elvis08.kaist.ac.kr:$SP_OUT/ $SP_OUT
 
 mkdir -p $DEST
 rsync -az $HEATMAPS/ $DEST
 
 for REPLAYPATH in $(find $DEST -name "replay.json" -type f); do
-  rsync -az $BASE/utils/visualizer/ $(dirname $REPLAYPATH)
+  rsync -az ./visualizer/ $(dirname $REPLAYPATH)
 done
 
-for DUGPATH in $(find $SP_OUT -name "dug.json" -type f); do
-  BIN=$(basename $(dirname $(dirname $DUGPATH)))
+for DUGPATH in $(find $SP_OUT -maxdepth 2 -name "dug.json" -type f); do
+  BIN=$(basename $(dirname $DUGPATH))
   echo "Processing bin: $BIN"
-  for REPLAYPATH in $(find $DEST/$BIN* -name "replay.json" -type f); do
+  for REPLAYPATH in $(find "$DEST/$BIN"* -name "replay.json" -type f); do
     DESTPATH=$(dirname $REPLAYPATH)
     if [ -f "$DESTPATH/replay.json" ]; then
       cp $DUGPATH $DESTPATH
       echo "Copied dug.json to: $DESTPATH"
+    fi
+  done
+done
+
+for ADDIPATH in $(find $SP_OUT -name "additional.json" -type f); do
+  BIN=$(basename $(dirname $DUGPATH))
+  echo "Processing bin: $BIN"
+  for REPLAYPATH in $(find "$DEST/$BIN"* -name "replay.json" -type f); do
+    DESTPATH=$(dirname $REPLAYPATH)
+    if [ -f "$DESTPATH/replay.json" ]; then
+      cp $ADDIPATH $DESTPATH
+      echo "Copied additional.json to: $DESTPATH"
     fi
   done
 done

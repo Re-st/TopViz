@@ -23,23 +23,27 @@ function createCanvas() {
     .attr("height", "100%")
 }
 
-function parseJSONData(arr, replay) {
+function parseJSONData(arr, replay, additional) {
   let dict = {};
   var data = {
     "nodes": [],
     "links": []
   };
-  $.each(arr["callgraph"]["nodes"], function (_, obj) {
+  $.each(arr["dugraph"]["nodes"], function (_, obj) {
     var node = {
-      "fun_name": obj,
+      "bb_line": obj,
+      "function": additional[obj]["func"],
       "successors": [],
       "predecessors": [],
       "freq": replay["visit"][obj],
+      "targets": additional[obj]["belonging targets"],
+      "line": additional[obj]["start"] + "-" + additional[obj]["end"],
+      "bb_name": additional[obj]["bb"],
     };
     dict[obj] = node;
     data.nodes.push(node);
   });
-  let edges = arr["callgraph"]["edges"];
+  let edges = arr["dugraph"]["edges"];
   $.each(edges, function (_, obj) {
     dict[obj[0]].successors.push(obj[1]);
     dict[obj[1]].predecessors.push(obj[0]);
@@ -135,7 +139,7 @@ function appendPredecessors(list, node, nodes, zoom, canvas, width, height) {
   if (node.predecessors !== undefined)
     $.each(node.predecessors, function (_, name) {
       const matches = nodes.filter(function (n) {
-        return n.fun_name === name;
+        return n.bb_line === name;
       });
       matches.each(function (d, _) {
         pred.append("button")
@@ -156,7 +160,7 @@ function appendSuccessors(list, node, nodes, zoom, canvas, width, height) {
   if (node.successors !== undefined)
     $.each(node.successors, function (_, name) {
       const matches = nodes.filter(function (n) {
-        return n.fun_name === name;
+        return n.bb_line === name;
       });
       matches.each(function (d, _) {
         succ.append("button")
@@ -171,17 +175,23 @@ function appendSuccessors(list, node, nodes, zoom, canvas, width, height) {
     succ.append("span").text("");
 }
 
-function appendInfos(list, firstfind, freq, total_iterations, found_iteration) {
+function appendInfos(list, node) {
   const succ = list.append("li").classed("list-group-item", true);
   const infoContainer = succ.append("div");  // Use a block-level element for line breaks
   infoContainer.append("b").text("Function information: ");
   const ul1 = infoContainer.append("ul");  // Create an unordered list
-  ul1.append("li").text("First found at: Iteration " + String(firstfind));
-  ul1.append("li").text("Total visit frequency: " + String(freq));
-  infoContainer.append("b").text("Overall fuzzing information: ");
+  // ul1.append("li").text("First found at: Iteration " + String(firstfind));
+  ul1.append("li").text("Function name: " + String(node.function));
+  ul1.append("li").text("Total visit frequency: " + String(node.freq));
+  ul1.append("li").text("Belonging targets: " + String(node["targets"]));
+  infoContainer.append("b").text("Basic block information: ");
   const ul2 = infoContainer.append("ul");  // Create an unordered list
-  ul2.append("li").text("Total iterations: " + String(total_iterations));
-  ul2.append("li").text("Bug found at iteration: " + String(found_iteration));
+  ul2.append("li").text("Line: " + String(node.line));
+  ul2.append("li").text("Name in .ll: " + String(node.bb_name));
+  // infoContainer.append("b").text("Overall fuzzing information: ");
+  // const ul2 = infoContainer.append("ul");  // Create an unordered list
+  // ul2.append("li").text("Total iterations: " + String(total_iterations));
+  // ul2.append("li").text("Bug found at iteration: " + String(found_iteration));
 }
 
 function setTitle(node) {
@@ -189,7 +199,7 @@ function setTitle(node) {
     d3.select("#js-infobox-title").text("Select a function");
   } else {
     d3.select("#js-infobox-title")
-      .text(node.fun_name);
+      .text(node.bb_line);
   }
 }
 
@@ -209,13 +219,9 @@ function clickNode(node, nodes, zoom, canvas, width, height) {
   let list = clearContents().append("ul").classed("list-group", true);
   appendPredecessors(list, node, nodes, zoom, canvas, width, height);
   appendSuccessors(list, node, nodes, zoom, canvas, width, height);
-  // TODO: Change the dummy data to the real data
-  const firstfind = 1000;
-  const total_iterations = 9999;
-  const found_iteration = 1234;
-  appendInfos(list, firstfind, node.freq, total_iterations, found_iteration);
+  appendInfos(list, node);
   setTitle(node);
-  currentSelection = node.fun_name;
+  currentSelection = node.bb_line;
   showInfobox();
 
 }
@@ -265,7 +271,7 @@ function drawNodes(g, d, simulation, zoom, canvas, width, height) {
   nodes.append("ellipse")
     .attr("rx", 70)
     .attr("ry", 12)
-    .attr("id", d => d.fun_name)
+    .attr("id", d => d.bb_line)
     .attr("fill", "white")
     .attr("stroke", "grey")
     .attr("stroke-width", 1.5)
@@ -282,7 +288,7 @@ function drawNodes(g, d, simulation, zoom, canvas, width, height) {
     .attr('text-anchor', "middle")
     .attr("font-size", "10px")
     .text(function (d) {
-      return d.fun_name
+      return d.bb_line
     })
     .on("click", (_, d) => onClick(d, nodes, zoom, canvas, width, height))
 
@@ -426,7 +432,7 @@ function hideSearchBar(resultList) {
 
 function clearSearchResults(nodes, resultList) {
   nodes.select(".node").classed("node-found", function (node) {
-    return (currentSelection === node.fun_name);
+    return (currentSelection === node.bb_line);
   });
   hideSearchBar(resultList);
 }
@@ -445,7 +451,7 @@ function installSearchHandler(width, height, canvas, zoom, nodes) {
     clearSearchResults(nodes, resultList);
     if (escaped === "") return;
 
-    // Check for specific field queries like 'year:2004'
+    // Check for specific field queries like 'targets:2016-9829'
     const fieldQuery = escaped.match(/^(\w+):(.+)$/);
     let matches;
     if (fieldQuery) {
@@ -456,7 +462,7 @@ function installSearchHandler(width, height, canvas, zoom, nodes) {
       });
     } else {
       matches = nodes.filter(function (n) {
-        return n.fun_name.match(new RegExp(escaped, "i"));
+        return n.bb_line.match(new RegExp(escaped, "i"));
       });
     }
 
@@ -467,7 +473,7 @@ function installSearchHandler(width, height, canvas, zoom, nodes) {
       resultList.append("li")
         .classed("list-group-item", true)
         .classed("py-1", true)
-        .text(d.fun_name + " (" + (d.year || "") + ")")
+        .text(d.bb_line + " (" + (d.targets || "") + ")")
         .on("click", function () {
           onClick(d, nodes, zoom, canvas, width, height);
         });
@@ -555,7 +561,7 @@ function initSimulation(d, simulation, width, height, links, nodes) {
   }
 
   simulation.nodes(d.nodes)
-    .force("link", d3.forceLink(d.links).id(d => d.fun_name))
+    .force("link", d3.forceLink(d.links).id(d => d.bb_line))
     .force("charge", d3.forceManyBody().strength(-500).distanceMax(800))
     .force("center", d3.forceCenter(width / 2, height / 2))
     .force("collison", d3.forceCollide().radius(50))
@@ -753,14 +759,15 @@ function getQueryVariable(variable) {
 
 Promise.all([
   d3.json("dug.json"),
-  d3.json("replay.json")
-]).then(function ([json, replay]) {
+  d3.json("replay.json"),
+  d3.json("additional.json")
+]).then(function ([json, replay, additional]) {
   const width = $("#js-canvas").width();
   const height = $("#js-canvas").height();
   const canvas = createCanvas();
   const simulation = d3.forceSimulation();
   const g = canvas.append("g");
-  const d = parseJSONData(json, replay);
+  const d = parseJSONData(json, replay, additional);
   const links = drawEdges(g, d);
   const zoom = installZoomHandler(canvas, g);
   const nodes = drawNodes(g, d, simulation, zoom, canvas, width, height);
