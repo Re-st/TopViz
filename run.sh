@@ -1,4 +1,5 @@
 #!/bin/bash
+# Note : Currently $BASE/funcs/vis_data_bb.json need to be manually filled.
 TOPVIZ="$HOME/TopViz"
 BASE="$HOME/Topuzz-experiment"
 BIN="swftophp-4.7"

@@ -406,11 +406,11 @@ function drawReplay(replay) {
       .attr("stroke-width", 1.5);
   });
 
-  // draw the specific target node thicker
-  // TODO: change shape to square
-  d3.select("#" + replay["target"])
-    .attr("stroke", "#330000")
-    .attr("stroke-width", 3);
+  // // draw the specific target node thicker
+  // // TODO: change shape to square
+  // d3.select("#" + replay["target"])
+  //   .attr("stroke", "#330000")
+  //   .attr("stroke-width", 3);
 }
 
 function installZoomHandler(canvas, g) {
