@@ -205,22 +205,26 @@ function appendToolURL(list, node) {
 function appendPredecessors(list, node, nodes, zoom, canvas, width, height) {
   const pred = list.append("li").classed("list-group-item", true);
   pred.append("b").text("Predecessors: ");
-  if (node.predecessors !== undefined)
+  if (node.predecessors !== undefined) {
     $.each(node.predecessors, function (_, name) {
       const matches = nodes.filter(function (n) {
         return n.bb_line.replace(":", "_") === name;
       });
       matches.each(function (d, _) {
+        // Check if the distance of the predecessor is less than the current node's distance
+        const distance = node.distanceFromTarget;
+        const predecessorDistance = d.distanceFromTarget;
+
         pred.append("button")
           .attr("class", "btn btn-outline-primary")
+          .style("background-color", predecessorDistance < distance ? "yellow" : "white") // Highlight in yellow if condition is met
           .text(replaceRightmostUnderbar(name) + "  ")
-          .on("click", _ =>
-            onClick(d, nodes, zoom, canvas, width, height)
-          );
+          .on("click", _ => onClick(d, nodes, zoom, canvas, width, height));
       });
     });
-  else
+  } else {
     pred.append("span").text("");
+  }
 }
 
 function appendSuccessors(list, node, nodes, zoom, canvas, width, height) {
@@ -232,12 +236,14 @@ function appendSuccessors(list, node, nodes, zoom, canvas, width, height) {
         return n.bb_line.replace(":", "_") === name;
       });
       matches.each(function (d, _) {
+        // Check if the distance of the successor is less than the current node's distance
+        const distance = node.distanceFromTarget;
+        const successorDistance = d.distanceFromTarget;
         succ.append("button")
           .attr("class", "btn btn-outline-primary")
+          .style("background-color", successorDistance < distance ? "yellow" : "white") // Highlight in yellow if condition is met
           .text(replaceRightmostUnderbar(name) + "  ")
-          .on("click", _ =>
-            onClick(d, nodes, zoom, canvas, width, height)
-          );
+          .on("click", _ => onClick(d, nodes, zoom, canvas, width, height));
       });
     });
   else
