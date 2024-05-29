@@ -781,4 +781,6 @@ Promise.all([
       }, 1000);
     }
   }, 500);
-})
+}).catch(function (error) {
+  console.error("Error loading JSON files:", error);
+});
