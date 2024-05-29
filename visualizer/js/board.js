@@ -45,8 +45,16 @@ function parseJSONData(arr, replay, additional) {
   });
   let edges = arr["dugraph"]["edges"];
   $.each(edges, function (_, obj) {
-    dict[obj[0]].successors.push(obj[1]);
-    dict[obj[1]].predecessors.push(obj[0]);
+    if (dict[obj[0]]) {
+      dict[obj[0]].successors.push(obj[1]);
+    } else {
+      console.log(`Key not found in dict: ${obj[0]}`);
+    }
+    if (dict[obj[1]]) {
+      dict[obj[1]].predecessors.push(obj[0]);
+    } else {
+      console.log(`Key not found in dict: ${obj[1]}`);
+    }
     data.links.push({
       "source": obj[0],
       "target": obj[1]

@@ -96,6 +96,9 @@ def main():
         if 'dug.json' in files:
             # Extract directory name
             target = os.path.basename(base_dir)
+            # Lvl 2 directory desired
+            if target == args.bin:
+                continue
             dug_file = os.path.join(base_dir, 'dug.json')
             with open(os.path.join(dug_directory, dug_file), 'r') as file:
                 dug_data = json.load(file)
@@ -112,21 +115,26 @@ def main():
                                     print(filename, line_no, details['start'], details['end'], target, additional_dict[key]['belonging targets'])
                             if new_node not in merged_graph['dugraph']['nodes']:
                                 merged_graph['dugraph']['nodes'].append(new_node)
-                            break
+                            # break
                 for edge in dug_data['dugraph']['edges']:
                     src = edge[0]
                     dst = edge[1]
                     src_filename, src_line_no = src.split(':')
                     dst_filename, dst_line_no = dst.split(':')
+                    src_set = set()
+                    dst_set = set()
                     for key, details in additional_dict.items():
                         if src_filename == key.split(':')[0] and int(details['start']) <= int(src_line_no) <= int(details['end']):
                             src = f"{src_filename}:{details['start']}"
+                            src_set.add(src)
                         if dst_filename == key.split(':')[0] and int(details['start']) <= int(dst_line_no) <= int(details['end']):
                             dst = f"{dst_filename}:{details['start']}"
-                    new_edge = [src, dst]
-                    if new_edge not in merged_graph['dugraph']['edges']:
-                        merged_graph['dugraph']['edges'].append(new_edge)
-                merged_graph['dugraph']['edges'].extend(dug_data['dugraph']['edges'])
+                            dst_set.add(dst)
+                    for src in src_set:
+                        for dst in dst_set:
+                            new_edge = [src, dst]
+                            if new_edge not in merged_graph['dugraph']['edges']:
+                                merged_graph['dugraph']['edges'].append(new_edge)
 
     # Step 5: Write the additional data dictionary to additional.json
     # This will store mapping information that correlates nodes with their corresponding function and basic block.
