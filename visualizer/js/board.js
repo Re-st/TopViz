@@ -43,6 +43,36 @@ function createCanvas() {
     .attr("height", "100%")
 }
 
+function calculateDistancesFromTargets(nodes, targets) {
+  let distances = {};
+  let queue = [];
+
+  // Initialize distances and queue with target nodes
+  for (let target in targets) {
+    distances[target] = 0;
+    queue.push(target);
+  }
+
+  // BFS to calculate distances
+  while (queue.length > 0) {
+    let current = queue.shift();
+    let currentDistance = distances[current];
+
+    for (let key in nodes) {
+      let node = nodes[key];
+      console.log(node.successors);
+      if (node.successors.includes(current.replace(":", "_"))) {
+        if (distances[node.bb_line] === undefined) {
+          distances[node.bb_line] = currentDistance + 1;
+          queue.push(node.bb_line);
+        }
+      }
+    }
+  }
+
+  return distances;
+}
+
 function parseJSONData(arr, replay, additional) {
   let dict = {};
   var data = {
@@ -85,6 +115,12 @@ function parseJSONData(arr, replay, additional) {
       "target": obj[1]
     });
   });
+  // Calculate distances from targets
+  let distances = calculateDistancesFromTargets(dict, replay["targets"]);
+  data.nodes.forEach(node => {
+    node.distanceFromTarget = distances[node.bb_line] !== undefined ? distances[node.bb_line] : 'N/A';
+  });
+
   return data;
 }
 
@@ -222,6 +258,8 @@ function appendInfos(list, node) {
   const ul2 = infoContainer.append("ul");  // Create an unordered list
   ul2.append("li").text("Line: " + String(node.line));
   ul2.append("li").text("Name in .ll: " + String(node.bb_name));
+  ul2.append("li").text("Distance from target: " + String(node.distanceFromTarget)); // Add distance information here
+
   // infoContainer.append("b").text("Overall fuzzing information: ");
   // const ul2 = infoContainer.append("ul");  // Create an unordered list
   // ul2.append("li").text("Total iterations: " + String(total_iterations));
