@@ -208,95 +208,20 @@ function appendSuccessors(list, node, nodes, zoom, canvas, width, height) {
     succ.append("span").text("");
 }
 
-function drawChart(container, data) {
-  const margin = { top: 10, right: 30, bottom: 30, left: 40 };
-  const width = 450 - margin.left - margin.right;
-  const height = 200 - margin.top - margin.bottom;
-
-  // Append the SVG object to the container
-  const svg = container.append("svg")
-    .attr("width", width + margin.left + margin.right)
-    .attr("height", height + margin.top + margin.bottom)
-    .append("g")
-    .attr("transform", `translate(${margin.left},${margin.top})`);
-
-  // X axis
-  const x = d3.scaleBand()
-    .range([0, width])
-    .domain(data.map(d => d.label))
-    .padding(0.2);
-
-  svg.append("g")
-    .attr("transform", `translate(0,${height})`)
-    .call(d3.axisBottom(x));
-
-  // Y axis
-  const y = d3.scaleLinear()
-    .domain([0, d3.max(data, d => d.value)])
-    .range([height, 0]);
-
-  svg.append("g")
-    .call(d3.axisLeft(y));
-
-  // Bars
-  svg.selectAll("bars")
-    .data(data)
-    .enter()
-    .append("rect")
-    .attr("x", d => x(d.label))
-    .attr("width", x.bandwidth())
-    .attr("y", d => y(d.value))
-    .attr("height", d => height - y(d.value))
-    .attr("fill", "#69b3a2");
-
-  // Add interactive tooltip
-  const tooltip = d3.select("body").append("div")
-    .style("opacity", 0)
-    .attr("class", "tooltip")
-    .style("background-color", "white")
-    .style("border", "solid")
-    .style("border-width", "1px")
-    .style("border-radius", "5px")
-    .style("padding", "10px");
-
-  svg.selectAll("rect")
-    .on("mouseover", (event, d) => {
-      tooltip.style("opacity", 1);
-    })
-    .on("mousemove", (event, d) => {
-      tooltip
-        .html("Value: " + d.value)
-        .style("left", (event.pageX + 10) + "px")
-        .style("top", (event.pageY + 10) + "px");
-    })
-    .on("mouseleave", () => {
-      tooltip.style("opacity", 0);
-    });
-}
 function appendInfos(list, node) {
-  const infoContainer = list.append("li").classed("list-group-item", true)
-    .append("div");  // Use a block-level element for line breaks
-
+  const succ = list.append("li").classed("list-group-item", true);
+  const infoContainer = succ.append("div");  // Use a block-level element for line breaks
   infoContainer.append("b").text("Function information: ");
   const ul1 = infoContainer.append("ul");  // Create an unordered list
+  // ul1.append("li").text("First found at: Iteration " + String(firstfind));
   ul1.append("li").text("Function name: " + String(node.function));
   ul1.append("li").text("Total visit frequency: " + String(node.freq));
   ul1.append("li").text("Belonging targets: " + String(node["targets"]));
   ul1.append("li").text("Rank: " + String(node.rank)); // Add rank information here
-
   infoContainer.append("b").text("Basic block information: ");
   const ul2 = infoContainer.append("ul");  // Create an unordered list
   ul2.append("li").text("Line: " + String(node.line));
   ul2.append("li").text("Name in .ll: " + String(node.bb_name));
-
-  // Draw the interactive chart
-  const chartData = [
-    { label: "Freq", value: node.freq },
-    { label: "Rank", value: parseInt(node.rank.split(" / ")[0], 10) },
-    { label: "Total", value: parseInt(node.rank.split(" / ")[1], 10) }
-  ];
-  drawChart(infoContainer, chartData);  // Call the drawChart function
-
   // infoContainer.append("b").text("Overall fuzzing information: ");
   // const ul2 = infoContainer.append("ul");  // Create an unordered list
   // ul2.append("li").text("Total iterations: " + String(total_iterations));
@@ -356,22 +281,12 @@ function onClick(node, nodes, zoom, canvas, width, height) {
       d3.zoomIdentity.translate(x, y).scale(k));
 }
 
-// Create Tooltip
-const tooltip = d3.select("body").append("div")
-  .attr("id", "tooltip")
-  .style("opacity", 0);
-
-// Function to calculate percentile
-function calculatePercentile(rank, total) {
-  return ((total - rank + 1) / total * 100).toFixed(2);
-}
-
 function drawNodes(g, d, simulation, zoom, canvas, width, height, targets) {
   const nodes = g.append("g")
     .selectAll("g")
     .data(d.nodes)
     .enter()
-    .append("g");
+    .append("g")
 
   function dragStart(d) {
     if (!d.active) simulation.alphaTarget(0.3).restart();
