@@ -16,6 +16,14 @@ const minScale = 0.2;
 // The currently selected node's name.
 var currentSelection = undefined;
 
+function replaceRightmostUnderbar(str) {
+  const lastIndex = str.lastIndexOf('_');
+  if (lastIndex === -1) {
+    return str; // No colon found, return the original string
+  }
+  return str.substring(0, lastIndex) + ':' + str.substring(lastIndex + 1);
+}
+
 function createCanvas() {
   return d3.select("#js-canvas")
     .append("svg")
@@ -40,11 +48,14 @@ function parseJSONData(arr, replay, additional) {
       "line": additional[obj]["start"] + "-" + additional[obj]["end"],
       "bb_name": additional[obj]["bb"],
     };
+    obj = obj.replace(":", "_");
     dict[obj] = node;
     data.nodes.push(node);
   });
   let edges = arr["dugraph"]["edges"];
   $.each(edges, function (_, obj) {
+    obj[0] = obj[0].replace(":", "_");
+    obj[1] = obj[1].replace(":", "_");
     if (dict[obj[0]]) {
       dict[obj[0]].successors.push(obj[1]);
     } else {
@@ -147,12 +158,12 @@ function appendPredecessors(list, node, nodes, zoom, canvas, width, height) {
   if (node.predecessors !== undefined)
     $.each(node.predecessors, function (_, name) {
       const matches = nodes.filter(function (n) {
-        return n.bb_line === name;
+        return n.bb_line.replace(":", "_") === name;
       });
       matches.each(function (d, _) {
         pred.append("button")
           .attr("class", "btn btn-outline-primary")
-          .text(name + "  ")
+          .text(replaceRightmostUnderbar(name) + "  ")
           .on("click", _ =>
             onClick(d, nodes, zoom, canvas, width, height)
           );
@@ -168,12 +179,12 @@ function appendSuccessors(list, node, nodes, zoom, canvas, width, height) {
   if (node.successors !== undefined)
     $.each(node.successors, function (_, name) {
       const matches = nodes.filter(function (n) {
-        return n.bb_line === name;
+        return n.bb_line.replace(":", "_") === name;
       });
       matches.each(function (d, _) {
         succ.append("button")
           .attr("class", "btn btn-outline-primary")
-          .text(name + "  ")
+          .text(replaceRightmostUnderbar(name) + "  ")
           .on("click", _ =>
             onClick(d, nodes, zoom, canvas, width, height)
           );
@@ -250,7 +261,7 @@ function onClick(node, nodes, zoom, canvas, width, height) {
       d3.zoomIdentity.translate(x, y).scale(k));
 }
 
-function drawNodes(g, d, simulation, zoom, canvas, width, height) {
+function drawNodes(g, d, simulation, zoom, canvas, width, height, targets) {
   const nodes = g.append("g")
     .selectAll("g")
     .data(d.nodes)
@@ -294,11 +305,22 @@ function drawNodes(g, d, simulation, zoom, canvas, width, height) {
     .attr("class", "nodetext")
     .attr("dominant-baseline", "central")
     .attr('text-anchor', "middle")
-    .attr("font-size", "10px")
-    .text(function (d) {
-      return d.bb_line
+    // currently don't work. need to fix
+    .attr("font-size", function (d) { return targets[d.bb_line] ? "16px" : "10px"; })
+    .each(function (d) {
+      var lines = [d.bb_line];
+      if (targets[d.bb_line]) {
+        lines.push(targets[d.bb_line]);
+      }
+      var text = d3.select(this);
+      lines.forEach(function (line, i) {
+        text.append("tspan")
+          .attr("x", 0)
+          .attr("dy", i ? "1.2em" : 0) // Adjust the line height
+          .text(line);
+      });
     })
-    .on("click", (_, d) => onClick(d, nodes, zoom, canvas, width, height))
+    .on("click", (_, d) => onClick(d, nodes, zoom, canvas, width, height));
 
   const dragHandler = d3.drag()
     .on("start", dragStart)
@@ -400,14 +422,14 @@ function drawReplay(replay) {
 
   // visited node
   for (var key in replay["visit"]) {
-    d3.select("#" + key).attr("fill", _ => {
-      return colorScale(replay["visit"][key])
-    })
+    var element = document.getElementById(key);
+    d3.select(element).attr("fill", _ => colorScale(replay["visit"][key]));
   }
 
   // draw all targets (for the program) larger
-  replay["targets"].forEach(function (key) {
-    d3.select("#" + key)
+  Object.keys(replay["targets"]).forEach(function (key) {
+    var element = document.getElementById(key);
+    d3.select(element)
       .attr("rx", 105)
       .attr("ry", 18)
       .attr("stroke", "#000000")
@@ -416,7 +438,8 @@ function drawReplay(replay) {
 
   // // draw the specific target node thicker
   // // TODO: change shape to square
-  // d3.select("#" + replay["target"])
+  // var key_change = key.replace(":", "_");
+  // d3.select("#" + key_change)
   //   .attr("stroke", "#330000")
   //   .attr("stroke-width", 3);
 }
@@ -555,7 +578,7 @@ function initSimulation(d, simulation, width, height, links, nodes) {
   }
 
   simulation.nodes(d.nodes)
-    .force("link", d3.forceLink(d.links).id(d => d.bb_line))
+    .force("link", d3.forceLink(d.links).id(d => d.bb_line.replace(":", "_")))
     .force("charge", d3.forceManyBody().strength(-500).distanceMax(800))
     .force("center", d3.forceCenter(width / 2, height / 2))
     .force("collison", d3.forceCollide().radius(50))
@@ -764,7 +787,7 @@ Promise.all([
   const d = parseJSONData(json, replay, additional);
   const links = drawEdges(g, d);
   const zoom = installZoomHandler(canvas, g);
-  const nodes = drawNodes(g, d, simulation, zoom, canvas, width, height);
+  const nodes = drawNodes(g, d, simulation, zoom, canvas, width, height, replay["targets"]);
   drawReplay(replay)
   installSearchHandler(width, height, canvas, zoom, nodes);
   installClickHandler();
