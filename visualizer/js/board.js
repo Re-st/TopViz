@@ -438,14 +438,28 @@ function installSearchHandler(width, height, canvas, zoom, nodes) {
   let itemidx = -1;
 
   function performSearch(s) {
+    const resultList = d3.select("#js-searchform-result");
+    const nodes = d3.selectAll(".node");
     const escaped = escapeRegExp(s);
-    const re = new RegExp(escaped, "i");
     itemidx = -1;
     clearSearchResults(nodes, resultList);
     if (escaped === "") return;
-    const matches = nodes.filter(function (n) {
-      return n.fun_name.match(re) !== null;
-    });
+
+    // Check for specific field queries like 'year:2004'
+    const fieldQuery = escaped.match(/^(\w+):(.+)$/);
+    let matches;
+    if (fieldQuery) {
+      const field = fieldQuery[1];
+      const value = fieldQuery[2];
+      matches = nodes.filter(function (n) {
+        return n[field] && String(n[field]).match(new RegExp(value, "i"));
+      });
+    } else {
+      matches = nodes.filter(function (n) {
+        return n.fun_name.match(new RegExp(escaped, "i"));
+      });
+    }
+
     matches.select(".node").classed("node-found", true);
     const maxShow = 10;
     matches.each(function (d, i) {
@@ -453,12 +467,12 @@ function installSearchHandler(width, height, canvas, zoom, nodes) {
       resultList.append("li")
         .classed("list-group-item", true)
         .classed("py-1", true)
-        .text(d.fun_name)
+        .text(d.fun_name + " (" + (d.year || "") + ")")
         .on("click", function () {
           onClick(d, nodes, zoom, canvas, width, height);
         });
     });
-  };
+  }
 
   function getCurrentResult() {
     return resultList.selectAll(".list-group-item")
