@@ -24,6 +24,18 @@ function replaceRightmostUnderbar(str) {
   return str.substring(0, lastIndex) + ':' + str.substring(lastIndex + 1);
 }
 
+function calculateRanks(replay) {
+  let visitArray = Object.entries(replay["visit"]);
+  visitArray.sort((a, b) => b[1] - a[1]);
+
+  let rankMap = {};
+  visitArray.forEach((item, index) => {
+    rankMap[item[0]] = index + 1;
+  });
+
+  return rankMap;
+}
+
 function createCanvas() {
   return d3.select("#js-canvas")
     .append("svg")
@@ -37,6 +49,7 @@ function parseJSONData(arr, replay, additional) {
     "nodes": [],
     "links": []
   };
+  let rankMap = calculateRanks(replay);
   $.each(arr["dugraph"]["nodes"], function (_, obj) {
     var node = {
       "bb_line": obj,
@@ -44,6 +57,7 @@ function parseJSONData(arr, replay, additional) {
       "successors": [],
       "predecessors": [],
       "freq": replay["visit"][obj],
+      "rank": rankMap[obj] + " / " + Object.keys(replay["visit"]).length,
       "targets": additional[obj]["belonging targets"],
       "line": additional[obj]["start"] + "-" + additional[obj]["end"],
       "bb_name": additional[obj]["bb"],
@@ -203,6 +217,7 @@ function appendInfos(list, node) {
   ul1.append("li").text("Function name: " + String(node.function));
   ul1.append("li").text("Total visit frequency: " + String(node.freq));
   ul1.append("li").text("Belonging targets: " + String(node["targets"]));
+  ul1.append("li").text("Rank: " + String(node.rank)); // Add rank information here
   infoContainer.append("b").text("Basic block information: ");
   const ul2 = infoContainer.append("ul");  // Create an unordered list
   ul2.append("li").text("Line: " + String(node.line));
@@ -239,6 +254,11 @@ function clickNode(node, nodes, zoom, canvas, width, height) {
   appendPredecessors(list, node, nodes, zoom, canvas, width, height);
   appendSuccessors(list, node, nodes, zoom, canvas, width, height);
   appendInfos(list, node);
+  // Add the rank information
+  const rankInfo = list.append("li").classed("list-group-item", true);
+  rankInfo.append("b").text("Node Rank: ");
+  rankInfo.append("span").text(node.rank);
+
   setTitle(node);
   currentSelection = node.bb_line;
   showInfobox();
