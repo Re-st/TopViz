@@ -15,7 +15,9 @@ def print_dbg(msg):
 
 def setup_DAFL_logger(container):
     cmd = "ls /fuzzer/DAFL_logger"
-    if ("No such file or directory" in run_cmd_in_docker(container, cmd, True)):
+    output = run_cmd_in_docker(container, cmd, True)
+    print(output)
+    if ("No such file or directory" in output):
         # COPY DAFL_logger /fuzzer/DAFL_logger
         # COPY docker-setup/setup_DAFL_logger.sh /fuzzer/setup_DAFL_logger.sh
         # RUN ./setup_DAFL_logger.sh
@@ -29,8 +31,10 @@ def setup_DAFL_logger(container):
         print("DAFL_logger exists")
 
 def build_binary(container, bin):
-    cmd = f"ls benchmark/bin/Topuzz-logger/{bin}"
-    if ("No such file or directory" in run_cmd_in_docker(container, cmd, True)):
+    cmd = f"ls benchmark/bin/Topuzz-logger/{bin}-topuzz"
+    output = run_cmd_in_docker(container, cmd, True)
+    print(output)
+    if ("No such file or directory" in output):
         # COPY docker-setup/build_bench_Topuzz_logger.sh /benchmark/build_bench_Topuzz_logger.sh
         # RUN ./build_bench_Topuzz_logger.sh
         cmd = f"python3 {BASE_DIR}/scripts/make_build_bench_scripts.py -b {bin} --tool Topuzz_logger -S"
